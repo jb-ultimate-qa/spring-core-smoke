@@ -1,4 +1,4 @@
-# spring-core-smoke
+git remote add origin git@github.com:jb-ultimate-qa/spring-core-smoke.git# spring-core-smoke
 
 Test data for the IntelliJ IDEA smoke test cases in Allure TestOps under the components
 **Spring. Core** and **Spring. Core. IDE UX**. Future automation will live in
@@ -21,30 +21,39 @@ mvn -q compile
    automated test resolves lines with `editor().getLineNumber("...")` — so reordering
    members is harmless, but changing the text of an annotation, method or field name
    breaks whichever case references it.
+   **Javadoc counts as an anchor too:** the Spring View documentation case asserts
+   fragments of `EnglishGreetingService`'s comment ("The @Primary candidate") and
+   `GreetingClient`'s ("Injection site for the Context and Configuration smoke tests"),
+   because the Documentation tab renders them. Reword either and that case fails.
 2. **Keep the code warning-free.** Several cases assert "no red code". Deliberately
    broken code belongs in the separate `spring_inspections` project, not here.
 3. **Generate actions may only be invoked in `ideux/GenerateTarget.java`.** They insert
    fields, methods and whole classes; anywhere else they would shift the lines the
    Spring. Core cases assert on. Every IDE UX case restores the file at the end.
-4. **Caret position is significant.** `Generate | Spring Component…` inserts a *live
+4. **Rename and delete only `springview/ViewTarget.java`.** A rename is a refactoring
+   across files. Every other bean is an anchor for some case — renaming
+   `AppConfig#greetingFormatter`, for instance, breaks 430110, and deleting it also
+   breaks 430111's "no Could not autowire errors" assertion. `ViewTarget` is referenced
+   by nothing for exactly this reason.
+5. **Caret position is significant.** `Generate | Spring Component…` inserts a *live
    template*, so both the offered component types and where the class lands depend on
    the caret: at file level it creates a package-private top-level sibling, inside the
    class body a `static` nested class. Cases state the caret position for that reason.
-5. **The profile-name completion baseline is `dev`, `prod`, `test`.** Three Profiles
+6. **The profile-name completion baseline is `dev`, `prod`, `test`.** Three Profiles
    cases assert that exact set. It comes from the `@Profile` declarations in
    `profiles/` plus `spring.profiles.active`. Adding another profile name — or an
    `application-{profile}.properties` file, which IDEA also treats as a profile
    declaration — changes the baseline for all three.
-6. **`events.basetype.CatchAllApplicationListener` is typed to `ApplicationEvent`,** so
+7. **`events.basetype.CatchAllApplicationListener` is typed to `ApplicationEvent`,** so
    it is a target of every publisher of an `ApplicationEvent` subclass. Adding another
    catch-all listener changes the popup contents of the base-type Events case. Note it
    does *not* appear as a target for the plain-POJO events in `events/`: at runtime
    Spring wraps those in a `PayloadApplicationEvent`, but the IDE's gutter does not
    link them, which is why the POJO publisher gutter has a single target.
-7. **`ideux/GreetingController.java` must stay self-contained.** A generated
+8. **`ideux/GreetingController.java` must stay self-contained.** A generated
    `@SpringBootApplication` in `ideux` component-scans only that package, so any
    dependency on a bean from another package would make it fail to start.
-8. **Pin the commit.** Automation references this repository through
+9. **Pin the commit.** Automation references this repository through
    `GitProjectInfo(..., commitHash = "...")`. After changing anything here, update the
    hash wherever the tests declare it.
 
@@ -63,6 +72,7 @@ mvn -q compile
 | `async` | Async | `@Async("mailExecutor")` → `AsyncConfig#mailExecutor` |
 | `tx` | Transactions | `@Transactional(transactionManager = "txManager")` → `TxConfig#txManager` |
 | `ideux` | Spring. Core. IDE UX | `GenerateTarget` — the only place generate actions may be invoked; `BookRepository` for the "Show Repositories" filter; `GreetingController` for Request Mapping generation |
+| `springview` | Spring View | `ViewTarget` — the only bean the live-update case may rename or delete |
 
 ## Known limits of this fixture
 
